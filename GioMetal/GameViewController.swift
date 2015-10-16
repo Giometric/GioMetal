@@ -9,181 +9,198 @@
 import Cocoa
 import MetalKit
 
-let MaxBuffers = 3
-let ConstantBufferSize = 1024*1024
-
-let vertexData:[Float] =
-[
-    -1.0, -1.0, 0.0, 1.0,
-    -1.0,  1.0, 0.0, 1.0,
-    1.0, -1.0, 0.0, 1.0,
-    
-    1.0, -1.0, 0.0, 1.0,
-    -1.0,  1.0, 0.0, 1.0,
-    1.0,  1.0, 0.0, 1.0,
-    
-    -0.0, 0.25, 0.0, 1.0,
-    -0.25, -0.25, 0.0, 1.0,
-    0.25, -0.25, 0.0, 1.0
-]
-
-let vertexColorData:[Float] =
-[
-    0.0, 0.0, 1.0, 1.0,
-    0.0, 0.0, 1.0, 1.0,
-    0.0, 0.0, 1.0, 1.0,
-    
-    0.0, 0.0, 1.0, 1.0,
-    0.0, 0.0, 1.0, 1.0,
-    0.0, 0.0, 1.0, 1.0,
-    
-    0.0, 0.0, 1.0, 1.0,
-    0.0, 1.0, 0.0, 1.0,
-    1.0, 0.0, 0.0, 1.0
-]
-
 class GameViewController: NSViewController, MTKViewDelegate {
     
     let device: MTLDevice = MTLCreateSystemDefaultDevice()!
+    var pipelineState : MTLRenderPipelineState! = nil
+    var commandQueue : MTLCommandQueue! = nil
     
-    var commandQueue: MTLCommandQueue! = nil
-    var pipelineState: MTLRenderPipelineState! = nil
-    var vertexBuffer: MTLBuffer! = nil
-    var vertexColorBuffer: MTLBuffer! = nil
+    var whiteTex : MTLTexture!
+    var grid : Grid!
+    var objToDraw : Cube!
+    var viewMatrix : Mat4 = Mat4.identity()
+    var projectionMatrix : Mat4 = Mat4()
+    var gridUniformBuffer : MTLBuffer! = nil
+    var uniformBuffer : MTLBuffer! = nil
+    var camPosition = Vector3(x: 0.0, y: 2.0, z: -6.0)
+    var camRotation = Vector3()
     
-    let inflightSemaphore = dispatch_semaphore_create(MaxBuffers)
-    var bufferIndex = 0
+    let moveSpeed : Float = 5.0
+    let lookSensitivity : Float = 10.0
     
-    // offsets used in animation
-    var xOffset:[Float] = [ -1.0, 1.0, -1.0 ]
-    var yOffset:[Float] = [ 1.0, 0.0, -1.0 ]
-    var xDelta:[Float] = [ 0.002, -0.001, 0.003 ]
-    var yDelta:[Float] = [ 0.001,  0.002, -0.001 ]
-
+    var lastFrameTimestamp: CFTimeInterval = 0.0
+    
+    func resetProjectionMatrix() {
+        projectionMatrix = Mat4.perspective(60.0, aspect: Float(view.bounds.width / view.bounds.height), nearZ: 0.1, farZ: 100.0)
+    }
+    
     override func viewDidLoad() {
-        
         super.viewDidLoad()
-        
-        // setup view properties
         let view = self.view as! MTKView
         view.delegate = self
         view.device = device
-        view.sampleCount = 4
+        view.sampleCount = 1
+        print("MTKView set up using device \(device.name!)")
         
-        loadAssets()
-    }
-    
-    func loadAssets() {
+        // This lets us get all the mouse/keyboard input events you'd normally want in a game
+        view.window?.makeFirstResponder(view)
+        view.window?.acceptsMouseMovedEvents = true
         
-        // load any resources required for rendering
-        let view = self.view as! MTKView
+        // May want to use this?
+        //NSEvent.addLocalMonitorForEventsMatchingMask(.KeyDownMask, handler: nil)
+        
         commandQueue = device.newCommandQueue()
-        commandQueue.label = "main command queue"
+        commandQueue.label = "Main Command Queue"
+        
+        resetProjectionMatrix()
         
         let defaultLibrary = device.newDefaultLibrary()!
-        let fragmentProgram = defaultLibrary.newFunctionWithName("passThroughFragment")!
-        let vertexProgram = defaultLibrary.newFunctionWithName("passThroughVertex")!
+        let vertexProgram = defaultLibrary.newFunctionWithName("basicVert")!
+        let fragmentProgram = defaultLibrary.newFunctionWithName("basicFrag")!
         
-        let pipelineStateDescriptor = MTLRenderPipelineDescriptor()
-        pipelineStateDescriptor.vertexFunction = vertexProgram
-        pipelineStateDescriptor.fragmentFunction = fragmentProgram
-        pipelineStateDescriptor.colorAttachments[0].pixelFormat = view.colorPixelFormat
-        pipelineStateDescriptor.sampleCount = view.sampleCount
+        let whiteTexUrl = NSBundle.mainBundle().URLForResource("white", withExtension: "png")
+        let texLoader = MTKTextureLoader(device: device)
         
         do {
-            try pipelineState = device.newRenderPipelineStateWithDescriptor(pipelineStateDescriptor)
-        } catch let error {
-            print("Failed to create pipeline state, error \(error)")
+            whiteTex = try texLoader.newTextureWithContentsOfURL(whiteTexUrl!, options: [MTKTextureLoaderOptionAllocateMipmaps : false])
+        } catch {
+            print("Failed to load white texture.")
         }
         
-        // generate a large enough buffer to allow streaming vertices for 3 semaphore controlled frames
-        vertexBuffer = device.newBufferWithLength(ConstantBufferSize, options: [])
-        vertexBuffer.label = "vertices"
+        let pipelineDescriptor = MTLRenderPipelineDescriptor()
+        pipelineDescriptor.vertexFunction = vertexProgram
+        pipelineDescriptor.fragmentFunction = fragmentProgram
+        pipelineDescriptor.colorAttachments[0].pixelFormat = view.colorPixelFormat
+        pipelineDescriptor.sampleCount = view.sampleCount
         
-        let vertexColorSize = vertexData.count * sizeofValue(vertexColorData[0])
-        vertexColorBuffer = device.newBufferWithBytes(vertexColorData, length: vertexColorSize, options: [])
-        vertexColorBuffer.label = "colors"
-    }
-    
-    func update() {
-        
-        // vData is pointer to the MTLBuffer's Float data contents
-        let pData = vertexBuffer.contents()
-        let vData = UnsafeMutablePointer<Float>(pData + 256*bufferIndex)
-        
-        // reset the vertices to default before adding animated offsets
-        vData.initializeFrom(vertexData)
-        
-        // Animate triangle offsets
-        let lastTriVertex = 24
-        let vertexSize = 4
-        for j in 0..<MaxBuffers {
-            // update the animation offsets
-            xOffset[j] += xDelta[j]
-            
-            if(xOffset[j] >= 1.0 || xOffset[j] <= -1.0) {
-                xDelta[j] = -xDelta[j]
-                xOffset[j] += xDelta[j]
-            }
-            
-            yOffset[j] += yDelta[j]
-            
-            if(yOffset[j] >= 1.0 || yOffset[j] <= -1.0) {
-                yDelta[j] = -yDelta[j]
-                yOffset[j] += yDelta[j]
-            }
-            
-            // Update last triangle position with updated animated offsets
-            let pos = lastTriVertex + j*vertexSize
-            vData[pos] = xOffset[j]
-            vData[pos+1] = yOffset[j]
+        do {
+            pipelineState = try device.newRenderPipelineStateWithDescriptor(pipelineDescriptor)
+        } catch {
+            print("Failed to create pipeline state object.")
         }
+        
+        gridUniformBuffer = device.newBufferWithLength(Mat4.bufferSize * 2, options: [])
+        uniformBuffer = device.newBufferWithLength(Mat4.bufferSize * 2, options: [])
+        
+        grid = Grid(device: device, size: 5)
+        
+        objToDraw = Cube(device: device, commandQueue: commandQueue)
+        objToDraw.position = Vector3(x: 0.0, y: 0.5, z: 0.0)
+        objToDraw.scale = Vector3(x: 2.0, y: 1.0, z: 1.0)
+        
+        lastFrameTimestamp = CACurrentMediaTime()
     }
     
-    func drawInMTKView(view: MTKView) {
+    func render() {
         
-        // use semaphore to encode 3 frames ahead
-        dispatch_semaphore_wait(inflightSemaphore, DISPATCH_TIME_FOREVER)
-        
-        self.update()
+        let view = self.view as! MTKView
         
         let commandBuffer = commandQueue.commandBuffer()
         commandBuffer.label = "Frame command buffer"
         
-        // use completion handler to signal the semaphore when this frame is completed allowing the encoding of the next frame to proceed
-        // use capture list to avoid any retain cycles if the command buffer gets retained anywhere besides this stack frame
-        commandBuffer.addCompletedHandler{ [weak self] commandBuffer in
-            if let strongSelf = self {
-                dispatch_semaphore_signal(strongSelf.inflightSemaphore)
-            }
-            return
-        }
-        
-        if let renderPassDescriptor = view.currentRenderPassDescriptor, currentDrawable = view.currentDrawable
-        {
-            let renderEncoder = commandBuffer.renderCommandEncoderWithDescriptor(renderPassDescriptor)
-            renderEncoder.label = "render encoder"
+        if let renderPassDesc = view.currentRenderPassDescriptor, drawable = view.currentDrawable {
+            renderPassDesc.colorAttachments[0].loadAction = .Clear
+            renderPassDesc.colorAttachments[0].clearColor = MTLClearColor(red: 0.0, green: 0.0, blue: 0.0, alpha: 1.0)
+            renderPassDesc.colorAttachments[0].storeAction = (view.sampleCount > 1 ? .MultisampleResolve : .Store)
             
-            renderEncoder.pushDebugGroup("draw morphing triangle")
+            viewMatrix = Mat4.lookAt(camPosition, target: Vector3(), up: Vector3.up)
+            
+            let renderEncoder = commandBuffer.renderCommandEncoderWithDescriptor(renderPassDesc)
+            renderEncoder.label = "Render Encoder"
+            
+            renderEncoder.pushDebugGroup("Draw Objects")
+            renderEncoder.setFrontFacingWinding(.CounterClockwise)
+            renderEncoder.setCullMode(.Back)
             renderEncoder.setRenderPipelineState(pipelineState)
-            renderEncoder.setVertexBuffer(vertexBuffer, offset: 256*bufferIndex, atIndex: 0)
-            renderEncoder.setVertexBuffer(vertexColorBuffer, offset:0 , atIndex: 1)
-            renderEncoder.drawPrimitives(.Triangle, vertexStart: 0, vertexCount: 9, instanceCount: 1)
+            
+            // First draw grid
+            renderEncoder.setTriangleFillMode(.Lines)
+            renderEncoder.setVertexBuffer(grid.vertexBuffer, offset: 0, atIndex: 0)
+            renderEncoder.setFragmentTexture(whiteTex, atIndex: 0)
+            if let samplerState = objToDraw.samplerState {
+                renderEncoder.setFragmentSamplerState(samplerState, atIndex: 0)
+            }
+            
+            let bufferPointerGrid = gridUniformBuffer.contents()
+            memcpy(bufferPointerGrid, viewMatrix.toBuffer(), Mat4.bufferSize)
+            memcpy(bufferPointerGrid + Mat4.bufferSize, projectionMatrix.toBuffer(), Mat4.bufferSize)
+            renderEncoder.setVertexBuffer(gridUniformBuffer, offset: 0, atIndex: 1)
+            
+            renderEncoder.drawPrimitives(.Triangle, vertexStart: 0, vertexCount: grid.vertexCount)
+            
+            // Finished rendering grid
+            renderEncoder.setTriangleFillMode(.Fill)
+            
+            // For all objects to be drawn
+            renderEncoder.setVertexBuffer(objToDraw.vertexBuffer, offset: 0, atIndex: 0)
+            renderEncoder.setFragmentTexture(objToDraw.texture, atIndex: 0)
+            if let samplerState = objToDraw.samplerState {
+                renderEncoder.setFragmentSamplerState(samplerState, atIndex: 0)
+            }
+            
+            let mv = objToDraw.modelMatrix() * viewMatrix
+            let bufferPointer = uniformBuffer.contents()
+            memcpy(bufferPointer, mv.toBuffer(), Mat4.bufferSize)
+            memcpy(bufferPointer + Mat4.bufferSize, projectionMatrix.toBuffer(), Mat4.bufferSize)
+            renderEncoder.setVertexBuffer(uniformBuffer, offset: 0, atIndex: 1)
+            
+            renderEncoder.drawPrimitives(.Triangle, vertexStart: 0, vertexCount: objToDraw.vertexCount)
+            // End objects loop
             
             renderEncoder.popDebugGroup()
             renderEncoder.endEncoding()
-                
-            commandBuffer.presentDrawable(currentDrawable)
+            
+            commandBuffer.presentDrawable(drawable)
         }
-        
-        // bufferIndex matches the current semaphore controled frame index to ensure writing occurs at the correct region in the vertex buffer
-        bufferIndex = (bufferIndex + 1) % MaxBuffers
-        
         commandBuffer.commit()
     }
     
+    func update(delta: Float) {
+        objToDraw.update(delta)
+        
+        // Handle input for camera
+        camRotation.x -= Input.mouseY * delta * lookSensitivity
+        if camRotation.x > 90.0 { camRotation.x = 90.0 }
+        else if camRotation.x < -90.0 { camRotation.x = -90.0 }
+        
+        camRotation.y += Input.mouseX * delta * lookSensitivity
+        if camRotation.y >= 360.0 { camRotation.x -= 360.0 }
+        else if camRotation.y < -360.0 { camRotation.x += 360.0 }
+        
+        var inputX : Float = 0.0
+        var inputY : Float = 0.0
+        
+        if Input.getKey("a") { inputX -= 1.0 }
+        if Input.getKey("d") { inputX += 1.0 }
+        
+        if Input.getKey("w") { inputY += 1.0 }
+        if Input.getKey("s") { inputY -= 1.0 }
+        
+        // Has some problems if you try to loop around, but mostly works
+        let upMove = viewMatrix.getColumn(1) * inputY
+        let sideMove = viewMatrix.getColumn(0) * inputX
+        var moveDirection = (upMove + sideMove)
+        if (moveDirection.sqrMagnitude() > 0.0) { moveDirection = moveDirection.normalized() }
+        
+        camPosition += moveDirection * (moveSpeed * delta)
+        
+        let zoom = viewMatrix.getColumn(2) * Input.scrollY
+        camPosition += zoom
+        
+        Input.endOfFrame()
+    }
+    
+    func drawInMTKView(view: MTKView) {
+        let currentTime = CACurrentMediaTime()
+        let delta = currentTime - lastFrameTimestamp
+        update(Float(delta))
+        
+        render()
+        lastFrameTimestamp = currentTime
+    }
     
     func mtkView(view: MTKView, drawableSizeWillChange size: CGSize) {
-        
+        // Aspect ratio may have changed, re-create projection matrix
+        resetProjectionMatrix()
     }
 }
