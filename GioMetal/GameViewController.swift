@@ -85,7 +85,7 @@ class GameViewController: NSViewController, MTKViewDelegate {
         grid = Grid(device: device, size: 5)
         
         objToDraw = Cube(device: device, commandQueue: commandQueue)
-        objToDraw.position = Vector3(x: 0.0, y: 0.5, z: 0.0)
+        objToDraw.position = Vector3(x: 0.0, y: 0.5, z: 2.0)
         objToDraw.scale = Vector3(x: 2.0, y: 1.0, z: 1.0)
         
         lastFrameTimestamp = CACurrentMediaTime()
@@ -114,7 +114,6 @@ class GameViewController: NSViewController, MTKViewDelegate {
             renderEncoder.setRenderPipelineState(pipelineState)
             
             // First draw grid
-            renderEncoder.setTriangleFillMode(.Lines)
             renderEncoder.setVertexBuffer(grid.vertexBuffer, offset: 0, atIndex: 0)
             renderEncoder.setFragmentTexture(whiteTex, atIndex: 0)
             if let samplerState = objToDraw.samplerState {
@@ -126,10 +125,7 @@ class GameViewController: NSViewController, MTKViewDelegate {
             memcpy(bufferPointerGrid + Mat4.bufferSize, projectionMatrix.toBuffer(), Mat4.bufferSize)
             renderEncoder.setVertexBuffer(gridUniformBuffer, offset: 0, atIndex: 1)
             
-            renderEncoder.drawPrimitives(.Triangle, vertexStart: 0, vertexCount: grid.vertexCount)
-            
-            // Finished rendering grid
-            renderEncoder.setTriangleFillMode(.Fill)
+            renderEncoder.drawPrimitives(.Line, vertexStart: 0, vertexCount: grid.vertexCount)
             
             // For all objects to be drawn
             renderEncoder.setVertexBuffer(objToDraw.vertexBuffer, offset: 0, atIndex: 0)
