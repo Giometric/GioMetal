@@ -89,6 +89,34 @@ public struct Mat4 : CustomStringConvertible {
         return lookMat
     }
     
+    static func fpsView(eyePos: Vector3, pitch: Float, yaw: Float) -> Mat4 {
+        
+        let pitchRad = pitch * MTMath.deg2Rad
+        let yawRad = yaw * MTMath.deg2Rad
+        let cosPitch = cos(pitchRad)
+        let sinPitch = sin(pitchRad)
+        let cosYaw = cos(yawRad)
+        let sinYaw = sin(yawRad)
+        
+        // Create basis vectors
+        let lookRight = Vector3(x: cosYaw, y: 0.0, z: -sinYaw)
+        let lookUp = Vector3(x: sinYaw * sinPitch, y: cosPitch, z: cosYaw * sinPitch)
+        let lookFwd = Vector3(x: sinYaw * cosPitch, y: -sinPitch, z: cosPitch * cosYaw)
+        
+        var lookMat = Mat4.identity()
+        lookMat.setColumn(0, vec3: lookRight)
+        lookMat.setColumn(1, vec3: lookUp)
+        lookMat.setColumn(2, vec3: lookFwd)
+        
+        var invTrans = Vector3()
+        invTrans.x = -Vector3.dot(lookRight, right: eyePos)
+        invTrans.y = -Vector3.dot(lookUp, right: eyePos)
+        invTrans.z = -Vector3.dot(lookFwd, right: eyePos)
+        lookMat.setRow(3, vec3: invTrans)
+        
+        return lookMat
+    }
+    
     static func scale(scale: Vector3) -> Mat4 {
         var mat = Mat4()
         mat[0] = scale.x

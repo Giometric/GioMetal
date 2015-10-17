@@ -128,7 +128,7 @@ class GameViewController: NSViewController, MTKViewDelegate {
             renderPassDesc.colorAttachments[0].clearColor = MTLClearColor(red: 0.0, green: 0.0, blue: 0.0, alpha: 1.0)
             renderPassDesc.colorAttachments[0].storeAction = (view.sampleCount > 1 ? .MultisampleResolve : .Store)
             renderPassDesc.depthAttachment.loadAction = .Clear
-            viewMatrix = Mat4.lookAt(camPosition, target: Vector3(), up: Vector3.up)
+            viewMatrix = Mat4.fpsView(camPosition, pitch: camRotation.x, yaw: camRotation.y)
             
             let renderEncoder = commandBuffer.renderCommandEncoderWithDescriptor(renderPassDesc)
             renderEncoder.label = "Render Encoder"
@@ -170,7 +170,8 @@ class GameViewController: NSViewController, MTKViewDelegate {
             
             // Draw grid axis mesh
             let bufPointerAxis = axisUniformBuffer.contents()
-            memcpy(bufPointerAxis, Mat4.lookAt(camPosition.normalized() * 4, target: Vector3(), up: Vector3.up).toBuffer(), Mat4.bufferSize)
+            viewMatrix.setRow(3, vec3: Vector3(x: 0, y: 0, z: 4))
+            memcpy(bufPointerAxis, viewMatrix.toBuffer(), Mat4.bufferSize)
             memcpy(bufPointerAxis + Mat4.bufferSize, axisProjMatrix.toBuffer(), Mat4.bufferSize)
             renderEncoder.setVertexBuffer(axisUniformBuffer, offset: 0, atIndex: 1)
             
@@ -203,8 +204,8 @@ class GameViewController: NSViewController, MTKViewDelegate {
         else if camRotation.x < -90.0 { camRotation.x = -90.0 }
         
         camRotation.y += Input.mouseX * delta * lookSensitivity
-        if camRotation.y >= 360.0 { camRotation.x -= 360.0 }
-        else if camRotation.y < -360.0 { camRotation.x += 360.0 }
+        if camRotation.y >= 360.0 { camRotation.y -= 360.0 }
+        else if camRotation.y <= -360.0 { camRotation.y += 360.0 }
         
         var inputX : Float = 0.0
         var inputY : Float = 0.0
@@ -216,9 +217,9 @@ class GameViewController: NSViewController, MTKViewDelegate {
         if Input.getKey("s") { inputY -= 1.0 }
         
         // Has some problems if you try to loop around, but mostly works
-        let upMove = viewMatrix.getColumn(1) * inputY
+        let fwdMove = viewMatrix.getColumn(2) * inputY
         let sideMove = viewMatrix.getColumn(0) * inputX
-        var moveDirection = (upMove + sideMove)
+        var moveDirection = (fwdMove + sideMove)
         if (moveDirection.sqrMagnitude() > 0.0) { moveDirection = moveDirection.normalized() }
         
         camPosition += moveDirection * (moveSpeed * delta)
