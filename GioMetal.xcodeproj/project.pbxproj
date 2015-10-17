@@ -17,6 +17,9 @@
 		AC41316B1B9949CF004D2931 /* Vector3.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC41316A1B9949CF004D2931 /* Vector3.swift */; settings = {ASSET_TAGS = (); }; };
 		AC41316D1B9949E5004D2931 /* Node.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC41316C1B9949E5004D2931 /* Node.swift */; settings = {ASSET_TAGS = (); }; };
 		AC41316F1B9949F9004D2931 /* Vertex.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC41316E1B9949F9004D2931 /* Vertex.swift */; settings = {ASSET_TAGS = (); }; };
+		AC4AED831BD0F1A700A6311F /* AxisMesh.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC4AED821BD0F1A700A6311F /* AxisMesh.swift */; settings = {ASSET_TAGS = (); }; };
+		AC4AED871BD0FD7600A6311F /* axis.obj in Resources */ = {isa = PBXBuildFile; fileRef = AC4AED861BD0FD7600A6311F /* axis.obj */; settings = {ASSET_TAGS = (); }; };
+		AC64C0A31BD1F49D00189DBA /* colorAtlas.png in Resources */ = {isa = PBXBuildFile; fileRef = AC64C0A21BD1F49D00189DBA /* colorAtlas.png */; settings = {ASSET_TAGS = (); }; };
 		AC9578F01BCF526E00494BA1 /* Grid.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC9578EF1BCF526E00494BA1 /* Grid.swift */; settings = {ASSET_TAGS = (); }; };
 		ACB15A6E1B9C086B003ACCA1 /* GameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACB15A6D1B9C086B003ACCA1 /* GameView.swift */; settings = {ASSET_TAGS = (); }; };
 		ACB15A701B9C1855003ACCA1 /* Input.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACB15A6F1B9C1855003ACCA1 /* Input.swift */; settings = {ASSET_TAGS = (); }; };
@@ -38,6 +41,9 @@
 		AC41316A1B9949CF004D2931 /* Vector3.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Vector3.swift; sourceTree = "<group>"; };
 		AC41316C1B9949E5004D2931 /* Node.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Node.swift; sourceTree = "<group>"; };
 		AC41316E1B9949F9004D2931 /* Vertex.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Vertex.swift; sourceTree = "<group>"; };
+		AC4AED821BD0F1A700A6311F /* AxisMesh.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AxisMesh.swift; sourceTree = "<group>"; };
+		AC4AED861BD0FD7600A6311F /* axis.obj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = axis.obj; sourceTree = "<group>"; };
+		AC64C0A21BD1F49D00189DBA /* colorAtlas.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = colorAtlas.png; sourceTree = "<group>"; };
 		AC9578EF1BCF526E00494BA1 /* Grid.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Grid.swift; sourceTree = "<group>"; };
 		ACB15A6D1B9C086B003ACCA1 /* GameView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = GameView.swift; sourceTree = "<group>"; };
 		ACB15A6F1B9C1855003ACCA1 /* Input.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Input.swift; sourceTree = "<group>"; };
@@ -76,6 +82,7 @@
 		AC4131561B994980004D2931 /* GioMetal */ = {
 			isa = PBXGroup;
 			children = (
+				AC4AED861BD0FD7600A6311F /* axis.obj */,
 				ACD36A1F1BD0951D009AAA97 /* Math */,
 				ACD36A1E1BD09400009AAA97 /* Shaders */,
 				ACD36A201BD09817009AAA97 /* Textures */,
@@ -90,6 +97,7 @@
 				AC9578EF1BCF526E00494BA1 /* Grid.swift */,
 				AC41316C1B9949E5004D2931 /* Node.swift */,
 				AC41316E1B9949F9004D2931 /* Vertex.swift */,
+				AC4AED821BD0F1A700A6311F /* AxisMesh.swift */,
 			);
 			path = GioMetal;
 			sourceTree = "<group>";
@@ -115,6 +123,7 @@
 		ACD36A201BD09817009AAA97 /* Textures */ = {
 			isa = PBXGroup;
 			children = (
+				AC64C0A21BD1F49D00189DBA /* colorAtlas.png */,
 				ACD36A211BD0982D009AAA97 /* testBox.png */,
 				ACD36A221BD0982D009AAA97 /* white.png */,
 			);
@@ -178,7 +187,9 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AC4AED871BD0FD7600A6311F /* axis.obj in Resources */,
 				ACD36A231BD0982D009AAA97 /* testBox.png in Resources */,
+				AC64C0A31BD1F49D00189DBA /* colorAtlas.png in Resources */,
 				AC41315E1B994980004D2931 /* Assets.xcassets in Resources */,
 				AC4131611B994980004D2931 /* MainMenu.xib in Resources */,
 				ACD36A241BD0982D009AAA97 /* white.png in Resources */,
@@ -196,6 +207,7 @@
 				AC4131691B9949C3004D2931 /* Cube.swift in Sources */,
 				AC41315C1B994980004D2931 /* BasicShaders.metal in Sources */,
 				AC41315A1B994980004D2931 /* GameViewController.swift in Sources */,
+				AC4AED831BD0F1A700A6311F /* AxisMesh.swift in Sources */,
 				AC41316D1B9949E5004D2931 /* Node.swift in Sources */,
 				AC374ADA1BCDF17E00051A69 /* Mat4.swift in Sources */,
 				ACB15A6E1B9C086B003ACCA1 /* GameView.swift in Sources */,

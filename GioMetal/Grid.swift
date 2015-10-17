@@ -38,21 +38,6 @@ class Grid {
             vertexData += D.buffer()
         }
         
-        // Add lines for world axes
-        let A = Vertex(x: 0, y: 0, z: 0, s: 0, t: 0, r: 1, g: 0, b: 0, a: 1)
-        let B = Vertex(x: 1, y: 0, z: 0, s: 0, t: 0, r: 1, g: 0, b: 0, a: 1)
-        let C = Vertex(x: 0, y: 0, z: 0, s: 0, t: 0, r: 0, g: 1, b: 0, a: 1)
-        let D = Vertex(x: 0, y: 1, z: 0, s: 0, t: 0, r: 0, g: 1, b: 0, a: 1)
-        let E = Vertex(x: 0, y: 0, z: 0, s: 0, t: 0, r: 0, g: 0, b: 1, a: 1)
-        let F = Vertex(x: 0, y: 0, z: 1, s: 0, t: 0, r: 0, g: 0, b: 1, a: 1)
-        
-        vertexData += A.buffer()
-        vertexData += B.buffer()
-        vertexData += C.buffer()
-        vertexData += D.buffer()
-        vertexData += E.buffer()
-        vertexData += F.buffer()
-
         self.device = device
         
         let dataSize = vertexData.count * sizeofValue(vertexData[0])

@@ -13,15 +13,20 @@ class GameViewController: NSViewController, MTKViewDelegate {
     
     let device: MTLDevice = MTLCreateSystemDefaultDevice()!
     var pipelineState : MTLRenderPipelineState! = nil
+    var depthStencilState : MTLDepthStencilState! = nil
     var commandQueue : MTLCommandQueue! = nil
     
     var whiteTex : MTLTexture!
+    var colorAtlasTex : MTLTexture!
     var grid : Grid!
+    var axis : AxisMesh!
     var objToDraw : Cube!
     var viewMatrix : Mat4 = Mat4.identity()
     var projectionMatrix : Mat4 = Mat4()
+    var axisProjMatrix : Mat4 = Mat4()
     var gridUniformBuffer : MTLBuffer! = nil
     var uniformBuffer : MTLBuffer! = nil
+    var axisUniformBuffer : MTLBuffer! = nil
     var camPosition = Vector3(x: 0.0, y: 2.0, z: -6.0)
     var camRotation = Vector3()
     
@@ -32,6 +37,7 @@ class GameViewController: NSViewController, MTKViewDelegate {
     
     func resetProjectionMatrix() {
         projectionMatrix = Mat4.perspective(60.0, aspect: Float(view.bounds.width / view.bounds.height), nearZ: 0.1, farZ: 100.0)
+        axisProjMatrix = Mat4.perspective(30.0, aspect: 1.0, nearZ: 0.05, farZ: 10)
     }
     
     override func viewDidLoad() {
@@ -39,6 +45,7 @@ class GameViewController: NSViewController, MTKViewDelegate {
         let view = self.view as! MTKView
         view.delegate = self
         view.device = device
+        view.depthStencilPixelFormat = .Depth32Float_Stencil8
         view.sampleCount = 1
         print("MTKView set up using device \(device.name!)")
         
@@ -58,19 +65,29 @@ class GameViewController: NSViewController, MTKViewDelegate {
         let vertexProgram = defaultLibrary.newFunctionWithName("basicVert")!
         let fragmentProgram = defaultLibrary.newFunctionWithName("basicFrag")!
         
-        let whiteTexUrl = NSBundle.mainBundle().URLForResource("white", withExtension: "png")
         let texLoader = MTKTextureLoader(device: device)
         
+        let whiteTexUrl = NSBundle.mainBundle().URLForResource("white", withExtension: "png")
         do {
             whiteTex = try texLoader.newTextureWithContentsOfURL(whiteTexUrl!, options: [MTKTextureLoaderOptionAllocateMipmaps : false])
         } catch {
             print("Failed to load white texture.")
         }
         
+        let colAtTexUrl = NSBundle.mainBundle().URLForResource("colorAtlas", withExtension: "png")
+        do {
+            colorAtlasTex = try texLoader.newTextureWithContentsOfURL(colAtTexUrl!, options: [MTKTextureLoaderOptionAllocateMipmaps : false])
+        } catch {
+            print("Failed to load color atlas texture.")
+        }
+        
         let pipelineDescriptor = MTLRenderPipelineDescriptor()
         pipelineDescriptor.vertexFunction = vertexProgram
+        
         pipelineDescriptor.fragmentFunction = fragmentProgram
         pipelineDescriptor.colorAttachments[0].pixelFormat = view.colorPixelFormat
+        pipelineDescriptor.depthAttachmentPixelFormat = view.depthStencilPixelFormat
+        pipelineDescriptor.stencilAttachmentPixelFormat = view.depthStencilPixelFormat
         pipelineDescriptor.sampleCount = view.sampleCount
         
         do {
@@ -79,10 +96,18 @@ class GameViewController: NSViewController, MTKViewDelegate {
             print("Failed to create pipeline state object.")
         }
         
+        let depthStencilDescriptor = MTLDepthStencilDescriptor()
+        depthStencilDescriptor.depthWriteEnabled = true
+        depthStencilDescriptor.depthCompareFunction = .LessEqual
+        depthStencilState = device.newDepthStencilStateWithDescriptor(depthStencilDescriptor)
+        
         gridUniformBuffer = device.newBufferWithLength(Mat4.bufferSize * 2, options: [])
         uniformBuffer = device.newBufferWithLength(Mat4.bufferSize * 2, options: [])
         
         grid = Grid(device: device, size: 5)
+        
+        axis = AxisMesh(device: device)
+        axisUniformBuffer = device.newBufferWithLength(Mat4.bufferSize * 2, options: [])
         
         objToDraw = Cube(device: device, commandQueue: commandQueue)
         objToDraw.position = Vector3(x: 0.0, y: 0.5, z: 2.0)
@@ -102,16 +127,16 @@ class GameViewController: NSViewController, MTKViewDelegate {
             renderPassDesc.colorAttachments[0].loadAction = .Clear
             renderPassDesc.colorAttachments[0].clearColor = MTLClearColor(red: 0.0, green: 0.0, blue: 0.0, alpha: 1.0)
             renderPassDesc.colorAttachments[0].storeAction = (view.sampleCount > 1 ? .MultisampleResolve : .Store)
-            
+            renderPassDesc.depthAttachment.loadAction = .Clear
             viewMatrix = Mat4.lookAt(camPosition, target: Vector3(), up: Vector3.up)
             
             let renderEncoder = commandBuffer.renderCommandEncoderWithDescriptor(renderPassDesc)
             renderEncoder.label = "Render Encoder"
             
             renderEncoder.pushDebugGroup("Draw Objects")
-            renderEncoder.setFrontFacingWinding(.CounterClockwise)
             renderEncoder.setCullMode(.Back)
             renderEncoder.setRenderPipelineState(pipelineState)
+            renderEncoder.setDepthStencilState(depthStencilState)
             
             // First draw grid
             renderEncoder.setVertexBuffer(grid.vertexBuffer, offset: 0, atIndex: 0)
@@ -142,6 +167,24 @@ class GameViewController: NSViewController, MTKViewDelegate {
             
             renderEncoder.drawPrimitives(.Triangle, vertexStart: 0, vertexCount: objToDraw.vertexCount)
             // End objects loop
+            
+            // Draw grid axis mesh
+            let bufPointerAxis = axisUniformBuffer.contents()
+            memcpy(bufPointerAxis, Mat4.lookAt(camPosition.normalized() * 4, target: Vector3(), up: Vector3.up).toBuffer(), Mat4.bufferSize)
+            memcpy(bufPointerAxis + Mat4.bufferSize, axisProjMatrix.toBuffer(), Mat4.bufferSize)
+            renderEncoder.setVertexBuffer(axisUniformBuffer, offset: 0, atIndex: 1)
+            
+            renderEncoder.setVertexBuffer(axis.mesh.vertexBuffers[0].buffer, offset: 0, atIndex: 0)
+            renderEncoder.setFragmentTexture(colorAtlasTex, atIndex: 0)
+            if let samplerState = objToDraw.samplerState {
+                renderEncoder.setFragmentSamplerState(samplerState, atIndex: 0)
+            }
+            let scale = Double((view.window?.screen?.backingScaleFactor)!)
+            let size = 90 * scale
+            renderEncoder.setViewport(MTLViewport(originX: 10 * scale, originY: (Double(view.drawableSize.height) - size) - 10, width: size, height: size, znear: -1, zfar: 1))
+            
+            renderEncoder.drawIndexedPrimitives(MTLPrimitiveType.Triangle, indexCount: axis.mesh.submeshes[0].indexCount, indexType: axis.mesh.submeshes[0].indexType, indexBuffer: axis.mesh.submeshes[0].indexBuffer.buffer, indexBufferOffset: 0)
+
             
             renderEncoder.popDebugGroup()
             renderEncoder.endEncoding()
@@ -180,7 +223,7 @@ class GameViewController: NSViewController, MTKViewDelegate {
         
         camPosition += moveDirection * (moveSpeed * delta)
         
-        let zoom = viewMatrix.getColumn(2) * Input.scrollY
+        let zoom = viewMatrix.getColumn(2) * Input.scrollY * 0.05
         camPosition += zoom
         
         Input.endOfFrame()

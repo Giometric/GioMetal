@@ -15,16 +15,16 @@ class Cube: Node {
     init (device: MTLDevice, commandQueue: MTLCommandQueue) {
         
         // Front
-        let E = Vertex(x:  0.5, y:  0.5, z:  0.5, s:  0.0, t:  1.0, r:  0.0, g:  0.0, b:  1.0, a:  1.0)
-        let F = Vertex(x:  0.5, y: -0.5, z:  0.5, s:  0.0, t:  0.0, r:  0.0, g:  0.0, b:  1.0, a:  1.0)
-        let G = Vertex(x: -0.5, y: -0.5, z:  0.5, s:  1.0, t:  0.0, r:  0.0, g:  0.0, b:  1.0, a:  1.0)
-        let H = Vertex(x: -0.5, y:  0.5, z:  0.5, s:  1.0, t:  1.0, r:  0.0, g:  0.0, b:  1.0, a:  1.0)
+        let A = Vertex(x:  0.5, y:  0.5, z:  0.5, s:  0.0, t:  1.0, r:  0.0, g:  0.0, b:  1.0, a:  1.0)
+        let B = Vertex(x:  0.5, y: -0.5, z:  0.5, s:  0.0, t:  0.0, r:  0.0, g:  0.0, b:  1.0, a:  1.0)
+        let C = Vertex(x: -0.5, y: -0.5, z:  0.5, s:  1.0, t:  0.0, r:  0.0, g:  0.0, b:  1.0, a:  1.0)
+        let D = Vertex(x: -0.5, y:  0.5, z:  0.5, s:  1.0, t:  1.0, r:  0.0, g:  0.0, b:  1.0, a:  1.0)
         
         // Back
-        let A = Vertex(x: -0.5, y:  0.5, z: -0.5, s:  0.0, t:  1.0, r:  1.0, g:  0.0, b:  1.0, a:  1.0)
-        let B = Vertex(x: -0.5, y: -0.5, z: -0.5, s:  0.0, t:  0.0, r:  1.0, g:  0.0, b:  1.0, a:  1.0)
-        let C = Vertex(x:  0.5, y: -0.5, z: -0.5, s:  1.0, t:  0.0, r:  1.0, g:  0.0, b:  1.0, a:  1.0)
-        let D = Vertex(x:  0.5, y:  0.5, z: -0.5, s:  1.0, t:  1.0, r:  1.0, g:  0.0, b:  1.0, a:  1.0)
+        let E = Vertex(x: -0.5, y:  0.5, z: -0.5, s:  0.0, t:  1.0, r:  1.0, g:  0.0, b:  1.0, a:  1.0)
+        let F = Vertex(x: -0.5, y: -0.5, z: -0.5, s:  0.0, t:  0.0, r:  1.0, g:  0.0, b:  1.0, a:  1.0)
+        let G = Vertex(x:  0.5, y: -0.5, z: -0.5, s:  1.0, t:  0.0, r:  1.0, g:  0.0, b:  1.0, a:  1.0)
+        let H = Vertex(x:  0.5, y:  0.5, z: -0.5, s:  1.0, t:  1.0, r:  1.0, g:  0.0, b:  1.0, a:  1.0)
         
         // Left
         let I = Vertex(x: -0.5, y:  0.5, z:  0.5, s:  0.0, t:  1.0, r:  1.0, g:  1.0, b:  0.0, a:  1.0)
@@ -51,14 +51,14 @@ class Cube: Node {
         let X = Vertex(x:  0.5, y: -0.5, z: -0.5, s:  1.0, t:  1.0, r:  0.0, g:  1.0, b:  1.0, a:  1.0)
         
         let vertices = [
-            A,B,C ,A,C,D,   //Front
-            E,F,G ,E,G,H,   //Back
+            A,C,B ,A,D,C,   //Front
+            E,G,F ,E,H,G,   //Back
             
-            I,J,K ,I,K,L,   //Left
-            M,N,O ,M,O,P,   //Right
+            I,K,J ,I,L,K,   //Left
+            M,O,N ,M,P,O,   //Right
             
-            Q,R,S ,Q,S,T,   //Top
-            U,V,W ,U,W,X    //Bot
+            Q,S,R ,Q,T,S,   //Top
+            U,W,V ,U,X,W    //Bot
         ]
         
         let texUrl = NSBundle.mainBundle().URLForResource("testBox", withExtension: "png")
