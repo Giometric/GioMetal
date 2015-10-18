@@ -10,16 +10,16 @@ import Foundation
 
 class Input {
     
-    // TODO: Modify this to use keycodes, probably with an enum (and check if there are any OSX APIs that already do this)
+    // Input class based loosely on the basic parts of the Input system in Unity3D
     
     static var mouseX : Float = 0.0
     static var mouseY : Float = 0.0
     static var scrollX : Float = 0.0
     static var scrollY : Float = 0.0
     
-    private static var keysDown = Set<Character>()
-    private static var keys = Set<Character>()
-    private static var keysUp = Set<Character>()
+    private static var keysDown = Set<KeyCode>()
+    private static var keys = Set<KeyCode>()
+    private static var keysUp = Set<KeyCode>()
     
     private static var mouseButtonsDown = Set<Int>()
     private static var mouseButtons = Set<Int>()
@@ -38,27 +38,31 @@ class Input {
         scrollY = 0.0
     }
     
-    static func setKeyDown(char: Character) {
-        if !keysDown.contains(char) {
-            keysDown.insert(char)
+    static func setKeyDown(key: KeyCode) {
+        print("Key Down: \(key)")
+        
+        if !keysDown.contains(key) {
+            keysDown.insert(key)
         }
-        if !keys.contains(char) {
-            keys.insert(char)
+        if !keys.contains(key) {
+            keys.insert(key)
         }
-        if keysUp.contains(char) {
-            keysUp.remove(char)
+        if keysUp.contains(key) {
+            keysUp.remove(key)
         }
     }
     
-    static func setKeyUp(char: Character) {
-        if keysDown.contains(char) {
-            keysDown.remove(char)
+    static func setKeyUp(key: KeyCode) {
+        print("Key Up: \(key)")
+        
+        if keysDown.contains(key) {
+            keysDown.remove(key)
         }
-        if keys.contains(char) {
-            keys.remove(char)
+        if keys.contains(key) {
+            keys.remove(key)
         }
-        if !keysUp.contains(char) {
-            keysUp.insert(char)
+        if !keysUp.contains(key) {
+            keysUp.insert(key)
         }
     }
     
@@ -86,16 +90,16 @@ class Input {
         }
     }
     
-    static func getKeyDown(char: Character) -> Bool {
-        return keysDown.contains(char)
+    static func getKeyDown(key: KeyCode) -> Bool {
+        return keysDown.contains(key)
     }
     
-    static func getKey(char: Character) -> Bool {
-        return keys.contains(char)
+    static func getKey(key: KeyCode) -> Bool {
+        return keys.contains(key)
     }
     
-    static func getKeyUp(char: Character) -> Bool {
-        return keysUp.contains(char)
+    static func getKeyUp(key: KeyCode) -> Bool {
+        return keysUp.contains(key)
     }
     
     static func getMouseButtonDown(button: Int) -> Bool {

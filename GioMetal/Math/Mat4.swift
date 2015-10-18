@@ -149,20 +149,7 @@ public struct Mat4 : CustomStringConvertible {
         mat[2] = -sinY
         mat[6] = cosY * sinX
         mat[10] = cosX * cosY
-        /*
-        mat[0] = cosY * cosZ
-        mat[1] = cosZ * sinX * sinY - cosX * sinZ
-        mat[2] = cosX * cosZ * sinY + sinX * sinZ
-        
-        mat[4] = cosY * sinZ
-        mat[5] = cosX * cosZ + sinX * sinY * sinZ
-        mat[6] = -cosZ * sinX + cosX * sinY * sinZ
-        
-        mat[8] = -sinY
-        mat[9] = cosY * sinX
-        mat[10] = cosX * cosY
-        */
-        mat[15] = 1.0 // ?
+        mat[15] = 1.0
         return mat
     }
     
@@ -202,6 +189,8 @@ public struct Mat4 : CustomStringConvertible {
         m[rowIndex + 1] = vec3.y
         m[rowIndex + 2] = vec3.z
     }
+    
+    // TODO: Put this back in
     /*
     mutating func setTrs(position: Vector3, rotation: Vector3, scale: Vector3) {
         
@@ -213,9 +202,26 @@ public struct Mat4 : CustomStringConvertible {
         m[15] = 1.0
     }
     */
+    
+    // TODO: NEEDS UNIT TESTING
     func inverse() -> Mat4 {
-        // TODO: Implement this
-        return self
+        var ret = self
+        
+        // Transpose upper left portion
+        ret[1] = self[4]
+        ret[2] = self[8]
+        ret[4] = self[1]
+        ret[6] = self[9]
+        ret[8] = self[2]
+        ret[9] = self[6]
+        
+        // Invert translation part
+        let trans = ret.getRow(3)
+        ret[12] = -Vector3.dot(ret.getRow(0), right: trans)
+        ret[13] = -Vector3.dot(ret.getRow(1), right: trans)
+        ret[14] = -Vector3.dot(ret.getRow(2), right: trans)
+        
+        return ret
     }
     
     func transpose() -> Mat4 {

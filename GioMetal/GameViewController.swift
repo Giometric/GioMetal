@@ -210,13 +210,12 @@ class GameViewController: NSViewController, MTKViewDelegate {
         var inputX : Float = 0.0
         var inputY : Float = 0.0
         
-        if Input.getKey("a") { inputX -= 1.0 }
-        if Input.getKey("d") { inputX += 1.0 }
+        if Input.getKey(KeyCode.A) { inputX -= 1.0 }
+        if Input.getKey(KeyCode.D) { inputX += 1.0 }
         
-        if Input.getKey("w") { inputY += 1.0 }
-        if Input.getKey("s") { inputY -= 1.0 }
+        if Input.getKey(KeyCode.W) { inputY += 1.0 }
+        if Input.getKey(KeyCode.S) { inputY -= 1.0 }
         
-        // Has some problems if you try to loop around, but mostly works
         let fwdMove = viewMatrix.getColumn(2) * inputY
         let sideMove = viewMatrix.getColumn(0) * inputX
         var moveDirection = (fwdMove + sideMove)

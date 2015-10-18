@@ -32,7 +32,7 @@ public struct Vector3 {
         self.z = z
     }
     
-    // Mark some convenient defaults
+    // MARK: some convenient defaults
     static let one = Vector3(x: 1.0, y: 1.0, z: 1.0)
     static let forward = Vector3(x: 0.0, y: 0.0, z: 1.0)
     static let back = Vector3(x: 0.0, y: 0.0, z: -1.0)
@@ -41,7 +41,7 @@ public struct Vector3 {
     static let left = Vector3(x: -1.0, y: 0.0, z: 0.0)
     static let right = Vector3(x: 1.0, y: 0.0, z: 0.0)
     
-    // Mark Vector math functions
+    // MARK: Vector math functions
     
     static func angle(left: Vector3, right: Vector3) -> Float {
         // PLACEHOLDER
@@ -136,7 +136,7 @@ public struct Vector3 {
     }
 }
 
-// Mark Operator overloads
+// MARK: Operator overloads
 
 prefix func -(right: Vector3) -> Vector3 {
     return Vector3(x: -right.x, y: -right.y, z: -right.z)
