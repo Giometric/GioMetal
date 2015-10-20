@@ -11,16 +11,13 @@ import MetalKit
 
 class GameViewController: NSViewController, MTKViewDelegate {
     
-    let device: MTLDevice = MTLCreateSystemDefaultDevice()!
-    var pipelineState : MTLRenderPipelineState! = nil
-    var depthStencilState : MTLDepthStencilState! = nil
-    var commandQueue : MTLCommandQueue! = nil
+    var graphics : Graphics! = nil
     
-    var whiteTex : MTLTexture!
-    var colorAtlasTex : MTLTexture!
-    var grid : Grid!
-    var axis : AxisMesh!
-    var objToDraw : Cube!
+    var whiteTex : MTLTexture?
+    var colorAtlasTex : MTLTexture?
+    var grid : Grid! = nil
+    var axis : AxisMesh! = nil
+    var objToDraw : Cube! = nil
     var viewMatrix : Mat4 = Mat4.identity()
     var projectionMatrix : Mat4 = Mat4()
     var axisProjMatrix : Mat4 = Mat4()
@@ -42,74 +39,33 @@ class GameViewController: NSViewController, MTKViewDelegate {
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        
         let view = self.view as! MTKView
         view.delegate = self
-        view.device = device
-        view.depthStencilPixelFormat = .Depth32Float_Stencil8
-        view.sampleCount = 1
-        print("MTKView set up using device \(device.name!)")
         
         // This lets us get all the mouse/keyboard input events you'd normally want in a game
         view.window?.makeFirstResponder(view)
         view.window?.acceptsMouseMovedEvents = true
         
+        graphics = Graphics(mtkView: view)
+        
         // May want to use this?
         //NSEvent.addLocalMonitorForEventsMatchingMask(.KeyDownMask, handler: nil)
         
-        commandQueue = device.newCommandQueue()
-        commandQueue.label = "Main Command Queue"
-        
         resetProjectionMatrix()
         
-        let defaultLibrary = device.newDefaultLibrary()!
-        let vertexProgram = defaultLibrary.newFunctionWithName("basicVert")!
-        let fragmentProgram = defaultLibrary.newFunctionWithName("basicFrag")!
+        whiteTex = graphics.loadTexture("white", ext: "png", createMips: false)
+        colorAtlasTex = graphics.loadTexture("colorAtlas", ext: "png", createMips: false)
+                
+        gridUniformBuffer = graphics.device.newBufferWithLength(Mat4.bufferSize * 2, options: [])
+        uniformBuffer = graphics.device.newBufferWithLength(Mat4.bufferSize * 2, options: [])
         
-        let texLoader = MTKTextureLoader(device: device)
+        grid = Grid(device: graphics.device, size: 10)
         
-        let whiteTexUrl = NSBundle.mainBundle().URLForResource("white", withExtension: "png")
-        do {
-            whiteTex = try texLoader.newTextureWithContentsOfURL(whiteTexUrl!, options: [MTKTextureLoaderOptionAllocateMipmaps : false])
-        } catch {
-            print("Failed to load white texture.")
-        }
+        axis = AxisMesh(device: graphics.device)
+        axisUniformBuffer = graphics.device.newBufferWithLength(Mat4.bufferSize * 2, options: [])
         
-        let colAtTexUrl = NSBundle.mainBundle().URLForResource("colorAtlas", withExtension: "png")
-        do {
-            colorAtlasTex = try texLoader.newTextureWithContentsOfURL(colAtTexUrl!, options: [MTKTextureLoaderOptionAllocateMipmaps : false])
-        } catch {
-            print("Failed to load color atlas texture.")
-        }
-        
-        let pipelineDescriptor = MTLRenderPipelineDescriptor()
-        pipelineDescriptor.vertexFunction = vertexProgram
-        
-        pipelineDescriptor.fragmentFunction = fragmentProgram
-        pipelineDescriptor.colorAttachments[0].pixelFormat = view.colorPixelFormat
-        pipelineDescriptor.depthAttachmentPixelFormat = view.depthStencilPixelFormat
-        pipelineDescriptor.stencilAttachmentPixelFormat = view.depthStencilPixelFormat
-        pipelineDescriptor.sampleCount = view.sampleCount
-        
-        do {
-            pipelineState = try device.newRenderPipelineStateWithDescriptor(pipelineDescriptor)
-        } catch {
-            print("Failed to create pipeline state object.")
-        }
-        
-        let depthStencilDescriptor = MTLDepthStencilDescriptor()
-        depthStencilDescriptor.depthWriteEnabled = true
-        depthStencilDescriptor.depthCompareFunction = .LessEqual
-        depthStencilState = device.newDepthStencilStateWithDescriptor(depthStencilDescriptor)
-        
-        gridUniformBuffer = device.newBufferWithLength(Mat4.bufferSize * 2, options: [])
-        uniformBuffer = device.newBufferWithLength(Mat4.bufferSize * 2, options: [])
-        
-        grid = Grid(device: device, size: 5)
-        
-        axis = AxisMesh(device: device)
-        axisUniformBuffer = device.newBufferWithLength(Mat4.bufferSize * 2, options: [])
-        
-        objToDraw = Cube(device: device, commandQueue: commandQueue)
+        objToDraw = Cube(graphics: graphics)
         objToDraw.position = Vector3(x: 0.0, y: 0.5, z: 2.0)
         objToDraw.scale = Vector3(x: 2.0, y: 1.0, z: 1.0)
         
@@ -120,9 +76,12 @@ class GameViewController: NSViewController, MTKViewDelegate {
         
         let view = self.view as! MTKView
         
-        let commandBuffer = commandQueue.commandBuffer()
+        let commandBuffer = graphics.commandQueue.commandBuffer()
         commandBuffer.label = "Frame command buffer"
         
+        // TODO: Separate some of this stuff out, in a sort of 'per-camera' way
+        // TODO: Instead of using the view's descriptor, generate one in Graphics
+        // Otherwise we're stuck to the same 'camera' settings for all drawing
         if let renderPassDesc = view.currentRenderPassDescriptor, drawable = view.currentDrawable {
             renderPassDesc.colorAttachments[0].loadAction = .Clear
             renderPassDesc.colorAttachments[0].clearColor = MTLClearColor(red: 0.0, green: 0.0, blue: 0.0, alpha: 1.0)
@@ -135,12 +94,15 @@ class GameViewController: NSViewController, MTKViewDelegate {
             
             renderEncoder.pushDebugGroup("Draw Objects")
             renderEncoder.setCullMode(.Back)
-            renderEncoder.setRenderPipelineState(pipelineState)
-            renderEncoder.setDepthStencilState(depthStencilState)
+            renderEncoder.setRenderPipelineState(graphics.pipelineState!)
+            renderEncoder.setDepthStencilState(graphics.depthStencilState)
             
             // First draw grid
             renderEncoder.setVertexBuffer(grid.vertexBuffer, offset: 0, atIndex: 0)
-            renderEncoder.setFragmentTexture(whiteTex, atIndex: 0)
+            if whiteTex != nil { renderEncoder.setFragmentTexture(whiteTex, atIndex: 0) }
+            else { renderEncoder.setFragmentTexture(graphics.errorPinkTex, atIndex: 0) }
+                
+            // TODO: Set sampler state per-texture
             if let samplerState = objToDraw.samplerState {
                 renderEncoder.setFragmentSamplerState(samplerState, atIndex: 0)
             }

@@ -12,7 +12,7 @@ import MetalKit
 
 class Cube: Node {
     
-    init (device: MTLDevice, commandQueue: MTLCommandQueue) {
+    init (graphics: Graphics) {
         
         // Front
         let A = Vertex(x:  0.5, y:  0.5, z:  0.5, s:  0.0, t:  1.0, r:  0.0, g:  0.0, b:  1.0, a:  1.0)
@@ -61,31 +61,8 @@ class Cube: Node {
             U,W,V ,U,X,W    //Bot
         ]
         
-        let texUrl = NSBundle.mainBundle().URLForResource("testBox", withExtension: "png")
-        let texLoader = MTKTextureLoader(device: device)
-        var texture : MTLTexture? = nil
-        
-        do {
-            texture = try texLoader.newTextureWithContentsOfURL(texUrl!, options: [MTKTextureLoaderOptionAllocateMipmaps : true])
-            Cube.generateMipMaps(texture!, commandQueue: commandQueue, block: { (buffer) -> Void in
-                print("Mips generated")
-                })
-        } catch {
-            print("Failed to load texture.")
-        }
-        
-        super.init(name: "Cube", vertices: vertices, device: device, texture: texture!)
-    }
-    
-    class func generateMipMaps(texture: MTLTexture, commandQueue: MTLCommandQueue, block: MTLCommandBufferHandler) {
-        
-        let commandBuffer = commandQueue.commandBuffer()
-        commandBuffer.addCompletedHandler(block)
-        let blitCommandEnc = commandBuffer.blitCommandEncoder()
-        blitCommandEnc.generateMipmapsForTexture(texture)
-        blitCommandEnc.endEncoding()
-        
-        commandBuffer.commit()
+        let texture = graphics.loadTexture("testBox", ext: "png", createMips: true)
+        super.init(name: "Cube", vertices: vertices, device: graphics.device, texture: texture!)
     }
 }
 

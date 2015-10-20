@@ -10,6 +10,8 @@ import Foundation
 import ModelIO
 import MetalKit
 
+// TODO: Pull a lot of this out into a mesh loader class
+
 class AxisMesh {
     
     var mesh: MTKMesh! = nil
@@ -20,7 +22,7 @@ class AxisMesh {
         let vertDesc = MDLVertexDescriptor()
         
         // Must set the vertex buffer layout on the descriptor
-        // Otherwise the descriptor will be competely ignored and the mesh will be loaded with whatever ModelIO finds
+        // Otherwise descriptor will be competely ignored and the mesh will be loaded with whatever ModelIO finds
         let vertLayout = MDLVertexBufferLayout()
         vertLayout.stride = 36
         vertDesc.layouts[0] = vertLayout

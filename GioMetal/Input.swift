@@ -39,8 +39,6 @@ class Input {
     }
     
     static func setKeyDown(key: KeyCode) {
-        print("Key Down: \(key)")
-        
         if !keysDown.contains(key) {
             keysDown.insert(key)
         }
@@ -52,9 +50,7 @@ class Input {
         }
     }
     
-    static func setKeyUp(key: KeyCode) {
-        print("Key Up: \(key)")
-        
+    static func setKeyUp(key: KeyCode) {        
         if keysDown.contains(key) {
             keysDown.remove(key)
         }

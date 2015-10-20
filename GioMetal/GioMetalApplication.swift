@@ -18,7 +18,6 @@ class GioMetalApplication: NSApplication {
     
     override func sendEvent(theEvent: NSEvent) {
         if theEvent.type == NSEventType.KeyUp && theEvent.modifierFlags.contains(NSEventModifierFlags.CommandKeyMask) {
-            Swift.print("BARF")
             self.keyWindow?.sendEvent(theEvent)
         }
         else {
